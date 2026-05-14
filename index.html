@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Tic-Tac-Toe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100'/><text y='.9em' font-size='90'>🎮</text></svg>">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-void: #0a0a0f;
+            --grid-cyan: #00f0ff;
+            --player-x: #ff00aa;
+            --player-o: #00ff88;
+            --accent-white: #ffffff;
+            --text-primary: #e0e0e0;
+            --text-secondary: #666666;
+            --glass-panel: rgba(20, 20, 30, 0.8);
+            --win-gold: #ffd700;
+        }
+
+        body {
+            font-family: 'Rajdhani', system-ui, sans-serif;
+            background: var(--bg-void);
+            color: var(--text-primary);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ui-overlay > * {
+            pointer-events: auto;
+        }
+
+        .title-bar {
+            position: absolute;
+            top: 24px;
+            left: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .game-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: var(--grid-cyan);
+            text-shadow: 0 0 20px var(--grid-cyan), 0 0 40px rgba(0, 240, 255, 0.5);
+            text-transform: uppercase;
+        }
+
+        .turn-indicator {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .turn-indicator.player-x {
+            color: var(--player-x);
+            text-shadow: 0 0 15px var(--player-x);
+        }
+
+        .turn-indicator.player-o {
+            color: var(--player-o);
+            text-shadow: 0 0 15px var(--player-o);
+        }
+
+        .score-panel {
+            position: absolute;
+            top: 24px;
+            right: 32px;
+            background: var(--glass-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px 28px;
+            display: flex;
+            gap: 32px;
+        }
+
+        .score-item {
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .score-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .score-value.x-score {
+            color: var(--player-x);
+            text-shadow: 0 0 10px var(--player-x);
+        }
+
+        .score-value.o-score {
+            color: var(--player-o);
+            text-shadow: 0 0 10px var(--player-o);
+        }
+
+        .score-value.draw-score {
+            color: var(--text-secondary);
+        }
+
+        .score-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        .action-panel {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .btn {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 12px 28px;
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            border-radius: 8px;
+            background: var(--glass-panel);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            outline: none;
+        }
+
+        .btn:hover {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--grid-cyan);
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn.primary {
+            background: rgba(0, 240, 255, 0.2);
+            border-color: var(--grid-cyan);
+        }
+
+        .btn.difficulty {
+            padding: 10px 20px;
+            font-size: 0.85rem;
+        }
+
+        .btn.difficulty.active {
+            background: rgba(0, 240, 255, 0.3);
+            border-color: var(--grid-cyan);
+            color: var(--grid-cyan);
+        }
+
+        .difficulty-selector {
+            display: flex;
+            gap: 8px;
+            margin-left: 16px;
+            padding-left: 16px;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .difficulty-selector.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: var(--glass-panel);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 20px;
+            padding: 48px 64px;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            box-shadow: 0 0 60px rgba(0, 240, 255, 0.2);
+        }
+
+        .modal-overlay.visible .modal {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 8px;
+            letter-spacing: 3px;
+        }
+
+        .modal-title.winner-x {
+            color: var(--player-x);
+            text-shadow: 0 0 30px var(--player-x), 0 0 60px var(--player-x);
+        }
+
+        .modal-title.winner-o {
+            color: var(--player-o);
+            text-shadow: 0 0 30px var(--player-o), 0 0 60px var(--player-o);
+        }
+
+        .modal-title.draw {
+            color: var(--text-secondary);
+            text-shadow: 0 0 20px var(--text-secondary);
+        }
+
+        .modal-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            letter-spacing: 2px;
+        }
+
+        .ai-thinking {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 30px;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .ai-thinking.visible {
+            opacity: 1;
+        }
+
+        .ai-thinking-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            color: var(--grid-cyan);
+        }
+
+        .ai-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .ai-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--grid-cyan);
+            border-radius: 50%;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .ai-dot:nth-child(2) { animation-delay: 0.2s; }
+        .ai-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .layer-indicator {
+            position: absolute;
+            right: 32px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .layer-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            background: var(--glass-panel);
+            color: var(--text-secondary);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .layer-btn:hover {
+            border-color: var(--grid-cyan);
+            color: var(--grid-cyan);
+        }
+
+        .layer-btn.active {
+            background: rgba(0, 240, 255, 0.2);
+            border-color: var(--grid-cyan);
+            color: var(--grid-cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+
+        .instructions {
+            position: absolute;
+            left: 32px;
+            bottom: 32px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            max-width: 200px;
+            line-height: 1.5;
+        }
+
+        .instructions span {
+            color: var(--grid-cyan);
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-void);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: var(--grid-cyan);
+            text-shadow: 0 0 30px var(--grid-cyan);
+            letter-spacing: 6px;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        .loading-bar {
+            width: 200px;
+            height: 2px;
+            background: rgba(0, 240, 255, 0.2);
+            margin-top: 24px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: var(--grid-cyan);
+            box-shadow: 0 0 10px var(--grid-cyan);
+            animation: loading 1.5s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes loading {
+            0% { width: 0%; margin-left: 0; }
+            50% { width: 100%; margin-left: 0; }
+            100% { width: 0%; margin-left: 100%; }
+        }
+
+        @media (max-width: 768px) {
+            .game-title { font-size: 1rem; letter-spacing: 2px; }
+            .score-panel { padding: 12px 16px; gap: 16px; }
+            .score-value { font-size: 1.5rem; }
+            .action-panel { flex-wrap: wrap; justify-content: center; }
+            .instructions { display: none; }
+            .layer-indicator { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loading">
+        <div class="loading-title">QUANTUM</div>
+        <div class="loading-bar">
+            <div class="loading-progress"></div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-overlay">
+        <div class="title-bar">
+            <h1 class="game-title">Quantum Tic-Tac-Toe</h1>
+            <div class="turn-indicator player-x" id="turnIndicator">Player X's Turn</div>
+        </div>
+
+        <div class="score-panel">
+            <div class="score-item">
+                <div class="score-value x-score" id="xScore">0</div>
+                <div class="score-label">X Wins</div>
+            </div>
+            <div class="score-item">
+                <div class="score-value draw-score" id="drawScore">0</div>
+                <div class="score-label">Draws</div>
+            </div>
+            <div class="score-item">
+                <div class="score-value o-score" id="oScore">0</div>
+                <div class="score-label">O Wins</div>
+            </div>
+        </div>
+
+        <div class="layer-indicator" id="layerIndicator">
+            <button class="layer-btn active" data-layer="3">4</button>
+            <button class="layer-btn" data-layer="2">3</button>
+            <button class="layer-btn" data-layer="1">2</button>
+            <button class="layer-btn" data-layer="0">1</button>
+        </div>
+
+        <div class="action-panel">
+            <button class="btn primary" id="newGameBtn">New Game</button>
+            <button class="btn" id="aiToggle">vs AI</button>
+            <div class="difficulty-selector" id="difficultySelector">
+                <button class="btn difficulty" data-difficulty="easy">Easy</button>
+                <button class="btn difficulty" data-difficulty="medium">Medium</button>
+                <button class="btn difficulty active" data-difficulty="hard">Hard</button>
+            </div>
+        </div>
+
+        <div class="ai-thinking" id="aiThinking">
+            <div class="ai-thinking-text">AI Computing</div>
+            <div class="ai-dots">
+                <div class="ai-dot"></div>
+                <div class="ai-dot"></div>
+                <div class="ai-dot"></div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <span>Drag</span> to rotate view<br>
+            <span>Scroll</span> to zoom<br>
+            <span>Click</span> cell to place
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2 class="modal-title" id="modalTitle">Player X Wins!</h2>
+            <p class="modal-subtitle" id="modalSubtitle">Victory in the quantum realm</p>
+            <button class="btn primary" id="playAgainBtn">Play Again</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // Game State
+        const state = {
+            board: Array(4).fill(null).map(() => 
+                Array(4).fill(null).map(() => 
+                    Array(4).fill(null)
+                )
+            ),
+            currentPlayer: 'X',
+            gameOver: false,
+            winner: null,
+            scores: { X: 0, O: 0, draw: 0 },
+            vsAI: false,
+            difficulty: 'hard',
+            aiThinking: false,
+            winningLine: null
+        };
+
+        // Three.js Setup
+        let scene, camera, renderer, composer, controls;
+        let gridGroup, piecesGroup, particlesGroup;
+        let cellMeshes = [];
+        let placedPieces = [];
+        let hoveredCell = null;
+        let ghostPiece = null;
+        let currentLayer = 3;
+
+        // Colors
+        const COLORS = {
+            cyan: 0x00f0ff,
+            magenta: 0xff00aa,
+            green: 0x00ff88,
+            gold: 0xffd700,
+            white: 0xffffff,
+            void: 0x0a0a0f
+        };
+
+        // Win Lines (all 76 possible winning lines in 4x4x4)
+        const WIN_LINES = generateWinLines();
+
+        function generateWinLines() {
+            const lines = [];
+            
+            // Rows (within each layer)
+            for (let z = 0; z < 4; z++) {
+                for (let y = 0; y < 4; y++) {
+                    for (let dx = 0; dx <= 1; dx++) {
+                        const line = [];
+                        for (let x = 0; x < 4; x++) {
+                            line.push([x, y, z]);
+                        }
+                        lines.push(line);
+                    }
+                }
+            }
+            
+            // Columns (within each layer)
+            for (let z = 0; z < 4; z++) {
+                for (let x = 0; x < 4; x++) {
+                    for (let dy = 0; dy <= 1; dy++) {
+                        const line = [];
+                        for (let y = 0; y < 4; y++) {
+                            line.push([x, y, z]);
+                        }
+                        lines.push(line);
+                    }
+                }
+            }
+            
+            // Z-axis pillars
+            for (let x = 0; x < 4; x++) {
+                for (let y = 0; y < 4; y++) {
+                    const line = [];
+                    for (let z = 0; z < 4; z++) {
+                        line.push([x, y, z]);
+                    }
+                    lines.push(line);
+                }
+            }
+            
+            // Diagonals on each layer (xy plane)
+            for (let z = 0; z < 4; z++) {
+                const diag1 = [[0,0,z],[1,1,z],[2,2,z],[3,3,z]];
+                const diag2 = [[3,0,z],[2,1,z],[1,2,z],[0,3,z]];
+                lines.push(diag1);
+                lines.push(diag2);
+            }
+            
+            // Diagonals on each layer (xz plane)
+            for (let y = 0; y < 4; y++) {
+                const diag1 = [[0,y,0],[1,y,1],[2,y,2],[3,y,3]];
+                const diag2 = [[3,y,0],[2,y,1],[1,y,2],[0,y,3]];
+                lines.push(diag1);
+                lines.push(diag2);
+            }
+            
+            // Diagonals on each layer (yz plane)
+            for (let x = 0; x < 4; x++) {
+                const diag1 = [[x,0,0],[x,1,1],[x,2,2],[x,3,3]];
+                const diag2 = [[x,3,0],[x,2,1],[x,1,2],[x,0,3]];
+                lines.push(diag1);
+                lines.push(diag2);
+            }
+            
+            // Space diagonals (corner to corner)
+            const spaceDiags = [
+                [[0,0,0],[1,1,1],[2,2,2],[3,3,3]],
+                [[3,0,0],[2,1,1],[1,2,2],[0,3,3]],
+                [[0,3,0],[1,2,1],[2,1,2],[3,0,3]],
+                [[3,3,0],[2,2,1],[1,1,2],[0,0,3]],
+                [[0,0,3],[1,1,2],[2,2,1],[3,3,0]],
+                [[3,0,3],[2,1,2],[1,2,1],[0,3,0]],
+                [[0,3,3],[1,2,2],[2,1,1],[3,0,0]],
+                [[3,3,3],[2,2,2],[1,1,1],[0,0,0]]
+            ];
+            lines.push(...spaceDiags);
+            
+            return lines;
+        }
+
+        // Initialize Three.js
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(COLORS.void);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 6, 8);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.5;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Post-processing
+            composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                0.8, 0.4, 0.85
+            );
+            composer.addPass(bloomPass);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 20;
+            controls.target.set(0, 1.5, 0);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+
+            const pointLight1 = new THREE.PointLight(COLORS.cyan, 1, 50);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(COLORS.magenta, 0.5, 50);
+            pointLight2.position.set(-10, 5, -10);
+            scene.add(pointLight2);
+
+            // Groups
+            gridGroup = new THREE.Group();
+            piecesGroup = new THREE.Group();
+            particlesGroup = new THREE.Group();
+            scene.add(gridGroup);
+            scene.add(piecesGroup);
+            scene.add(particlesGroup);
+
+            createStarfield();
+            createGrid();
+            createParticles();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onCanvasClick);
+            renderer.domElement.addEventListener('mousemove', onCanvasHover);
+            setupUI();
+
+            // Hide loading screen
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+            }, 1500);
+
+            animate();
+        }
+
+        function createStarfield() {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            
+            for (let i = 0; i < 2000; i++) {
+                vertices.push(
+                    (Math.random() - 0.5) * 100,
+                    (Math.random() - 0.5) * 100,
+                    (Math.random() - 0.5) * 100
+                );
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const stars = new THREE.Points(geometry, material);
+            scene.add(stars);
+        }
+
+        function createGrid() {
+            const cellSize = 1;
+            const spacing = 0.15;
+            const totalSize = cellSize * 4 + spacing * 3;
+            
+            for (let z = 0; z < 4; z++) {
+                const layerGroup = new THREE.Group();
+                layerGroup.position.z = -z * (cellSize + spacing);
+                
+                // Floor plane
+                const floorGeom = new THREE.PlaneGeometry(totalSize, totalSize);
+                const floorMat = new THREE.MeshBasicMaterial({
+                    color: COLORS.cyan,
+                    transparent: true,
+                    opacity: 0.05,
+                    side: THREE.DoubleSide
+                });
+                const floor = new THREE.Mesh(floorGeom, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -0.5;
+                layerGroup.add(floor);
+                
+                // Grid lines
+                const lineMaterial = new THREE.LineBasicMaterial({
+                    color: COLORS.cyan,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                // Horizontal lines
+                for (let i = 0; i <= 4; i++) {
+                    const points = [
+                        new THREE.Vector3(-totalSize/2 + i * (cellSize + spacing) - (i > 0 ? spacing : 0), -0.5, -totalSize/2 + cellSize/2),
+                        new THREE.Vector3(-totalSize/2 + i * (cellSize + spacing) - (i > 0 ? spacing : 0), -0.5, totalSize/2 - cellSize/2)
+                    ];
+                    // Simplified grid
+                }
+                
+                // Create cell meshes for raycasting
+                for (let y = 0; y < 4; y++) {
+                    cellMeshes[z] = cellMeshes[z] || [];
+                    cellMeshes[z][y] = [];
+                    
+                    for (let x = 0; x < 4; x++) {
+                        const cellGeom = new THREE.BoxGeometry(cellSize * 0.9, 0.1, cellSize * 0.9);
+                        const cellMat = new THREE.MeshBasicMaterial({
+                            color: COLORS.cyan,
+                            transparent: true,
+                            opacity: 0.1
+                        });
+                        const cellMesh = new THREE.Mesh(cellGeom, cellMat);
+                        cellMesh.position.set(
+                            x * (cellSize + spacing) - totalSize/2 + cellSize/2,
+                            -0.5,
+                            y * (cellSize + spacing) - totalSize/2 + cellSize/2
+                        );
+                        cellMesh.userData = { x, y, z };
+                        layerGroup.add(cellMesh);
+                        cellMeshes[z][y][x] = cellMesh;
+                    }
+                }
+                
+                gridGroup.add(layerGroup);
+            }
+            
+            // Edge glow effect
+            const edgeGeom = new THREE.EdgesGeometry(new THREE.BoxGeometry(totalSize + 0.2, 0.1, totalSize + 0.2));
+            const edgeMat = new THREE.LineBasicMaterial({ 
+                color: COLORS.cyan, 
+                transparent: true, 
+                opacity: 0.6 
+            });
+            
+            for (let z = 0; z < 4; z++) {
+                const edges = new THREE.LineSegments(edgeGeom, edgeMat);
+                edges.position.z = -z * 1.15;
+                edges.position.y = -0.5;
+                gridGroup.add(edges);
+            }
+            
+            // Connecting vertical lines
+            const vertMat = new THREE.LineBasicMaterial({
+                color: COLORS.cyan,
+                transparent: true,
+                opacity: 0.2
+            });
+            
+            for (let x = 0; x < 4; x++) {
+                for (let y = 0; y < 4; y++) {
+                    const points = [];
+                    for (let z = 0; z < 4; z++) {
+                        const px = x * 1.15 - totalSize/2 + 0.5;
+                        const py = -0.5;
+                        const pz = y * 1.15 - totalSize/2 + 0.5 - z * 1.15;
+                        points.push(new THREE.Vector3(px, py, pz));
+                    }
+                    const geom = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geom, vertMat);
+                    gridGroup.add(line);
+                }
+            }
+        }
+
+        function createParticles() {
+            // Ambient floating particles
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            
+            for (let i = 0; i < 100; i++) {
+                vertices.push(
+                    (Math.random() - 0.5) * 10,
+                    Math.random() * 8,
+                    (Math.random() - 0.5) * 10
+                );
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: COLORS.cyan,
+                size: 0.03,
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            particles.userData.isAmbient = true;
+            particlesGroup.add(particles);
+        }
+
+        function createXPiece(x, y, z, animate = true) {
+            const group = new THREE.Group();
+            
+            const material = new THREE.MeshBasicMaterial({
+                color: COLORS.magenta,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: COLORS.magenta,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            // Create X shape with two elongated pieces
+            const bar1 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.15, 0.15),
+                material
+            );
+            bar1.rotation.y = Math.PI / 4;
+            bar1.rotation.z = Math.PI / 4;
+            
+            const bar2 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.15, 0.15),
+                material
+            );
+            bar2.rotation.y = Math.PI / 4;
+            bar2.rotation.z = -Math.PI / 4;
+            
+            // Glow effect
+            const glow1 = bar1.clone();
+            glow1.material = glowMaterial;
+            glow1.scale.multiplyScalar(1.5);
+            
+            const glow2 = bar2.clone();
+            glow2.material = glowMaterial;
+            glow2.scale.multiplyScalar(1.5);
+            
+            group.add(bar1, bar2, glow1, glow2);
+            
+            const pos = getWorldPosition(x, y, z);
+            group.position.copy(pos);
+            
+            if (animate) {
+                group.scale.set(0, 0, 0);
+                animatePieceIn(group);
+            }
+            
+            piecesGroup.add(group);
+            return group;
+        }
+
+        function createOPiece(x, y, z, animate = true) {
+            const group = new THREE.Group();
+            
+            const material = new THREE.MeshBasicMaterial({
+                color: COLORS.green,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: COLORS.green,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            // Torus for O
+            const torus = new THREE.Mesh(
+                new THREE.TorusGeometry(0.25, 0.06, 16, 32),
+                material
+            );
+            torus.rotation.x = Math.PI / 2;
+            
+            const glow = torus.clone();
+            glow.material = glowMaterial;
+            glow.scale.multiplyScalar(1.5);
+            
+            group.add(torus, glow);
+            
+            const pos = getWorldPosition(x, y, z);
+            group.position.copy(pos);
+            
+            if (animate) {
+                group.scale.set(0, 0, 0);
+                animatePieceIn(group);
+            }
+            
+            piecesGroup.add(group);
+            return group;
+        }
+
+        function getWorldPosition(x, y, z) {
+            const spacing = 1.15;
+            const offset = 1.725;
+            return new THREE.Vector3(
+                x * spacing - offset,
+                -0.3,
+                y * spacing - offset - z * spacing
+            );
+        }
+
+        function animatePieceIn(piece) {
+            const startTime = performance.now();
+            const duration = 400;
+            
+            function animate() {
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Bounce easing
+                const eased = 1 - Math.pow(1 - progress, 3) * Math.cos(progress * Math.PI * 2);
+                const scale = Math.max(0, eased);
+                
+                piece.scale.set(scale, scale, scale);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            animate();
+            
+            // Create burst particles
+            createBurstParticles(piece.position.clone());
+        }
+
+        function createBurstParticles(position) {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const count = 20;
+            
+            for (let i = 0; i < count; i++) {
+                vertices.push(position.x, position.y, position.z);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: COLORS.cyan,
+                size: 0.05,
+                transparent: true,
+                opacity: 1
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            particles.userData.velocity = [];
+            
+            for (let i = 0; i < count; i++) {
+                particles.userData.velocity.push(new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.2,
+                    Math.random() * 0.15,
+                    (Math.random() - 0.5) * 0.2
+                ));
+            }
+            
+            particlesGroup.add(particles);
+            
+            // Animate and remove
+            const startTime = performance.now();
+            function animateBurst() {
+                const elapsed = performance.now() - startTime;
+                const progress = elapsed / 600;
+                
+                if (progress >= 1) {
+                    particlesGroup.remove(particles);
+                    return;
+                }
+                
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 0; i < count; i++) {
+                    const vel = particles.userData.velocity[i];
+                    positions[i * 3] += vel.x;
+                    positions[i * 3 + 1] += vel.y;
+                    positions[i * 3 + 2] += vel.z;
+                    vel.y -= 0.005; // gravity
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+                particles.material.opacity = 1 - progress;
+                
+                requestAnimationFrame(animateBurst);
+            }
+            animateBurst();
+        }
+
+        function createGhostPiece(x, y, z, player) {
+            removeGhostPiece();
+            
+            if (player === 'X') {
+                ghostPiece = createXPiece(x, y, z, false);
+            } else {
+                ghostPiece = createOPiece(x, y, z, false);
+            }
+            
+            ghostPiece.traverse(child => {
+                if (child.material) {
+                    child.material.transparent = true;
+                    child.material.opacity = 0.3;
+                }
+            });
+        }
+
+        function removeGhostPiece() {
+            if (ghostPiece) {
+                piecesGroup.remove(ghostPiece);
+                ghostPiece = null;
+            }
+        }
+
+        function onCanvasHover(event) {
+            if (state.gameOver || state.aiThinking) {
+                removeGhostPiece();
+                return;
+            }
+            
+            if (state.vsAI && state.currentPlayer === 'O') {
+                removeGhostPiece();
+                return;
+            }
+            
+            const intersects = getIntersectedCells(event);
+            
+            if (intersects.length > 0) {
+                const cell = intersects[0].object;
+                const { x, y, z } = cell.userData;
+                
+                if (state.board[z][y][x] === null) {
+                    createGhostPiece(x, y, z, state.currentPlayer);
+                    hoveredCell = cell;
+                    
+                    // Highlight cell
+                    cell.material.opacity = 0.3;
+                } else {
+                    removeGhostPiece();
+                    hoveredCell = null;
+                }
+            } else {
+                removeGhostPiece();
+                if (hoveredCell) {
+                    hoveredCell.material.opacity = 0.1;
+                    hoveredCell = null;
+                }
+            }
+        }
+
+        function onCanvasClick(event) {
+            if (state.gameOver || state.aiThinking) return;
+            
+            if (state.vsAI && state.currentPlayer === 'O') return;
+            
+            const intersects = getIntersectedCells(event);
+            
+            if (intersects.length > 0) {
+                const cell = intersects[0].object;
+                const { x, y, z } = cell.userData;
+                
+                if (state.board[z][y][x] === null) {
+                    makeMove(x, y, z);
+                } else {
+                    // Shake animation for invalid move
+                    shakeCell(cell);
+                }
+            }
+        }
+
+        function shakeCell(cell) {
+            const originalX = cell.position.x;
+            const startTime = performance.now();
+            
+            function animate() {
+                const elapsed = performance.now() - startTime;
+                const progress = elapsed / 200;
+                
+                if (progress >= 1) {
+                    cell.position.x = originalX;
+                    return;
+                }
+                
+                const offset = Math.sin(progress * Math.PI * 4) * 0.1 * (1 - progress);
+                cell.position.x = originalX + offset;
+                
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function getIntersectedCells(event) {
+            const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+            );
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            const allCells = [];
+            for (let z = 0; z < 4; z++) {
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        if (cellMeshes[z] && cellMeshes[z][y] && cellMeshes[z][y][x]) {
+                            allCells.push(cellMeshes[z][y][x]);
+                        }
+                    }
+                }
+            }
+            
+            return raycaster.intersectObjects(allCells);
+        }
+
+        function makeMove(x, y, z) {
+            state.board[z][y][x] = state.currentPlayer;
+            
+            if (state.currentPlayer === 'X') {
+                createXPiece(x, y, z);
+            } else {
+                createOPiece(x, y, z);
+            }
+            
+            removeGhostPiece();
+            
+            // Check for win
+            const winResult = checkWin();
+            if (winResult) {
+                endGame(state.currentPlayer, winResult);
+                return;
+            }
+            
+            // Check for draw
+            if (checkDraw()) {
+                endGame('draw');
+                return;
+            }
+            
+            // Switch player
+            state.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X';
+            updateTurnIndicator();
+            
+            // AI move
+            if (state.vsAI && state.currentPlayer === 'O') {
+                triggerAIMove();
+            }
+        }
+
+        function checkWin() {
+            for (const line of WIN_LINES) {
+                const first = state.board[line[0][2]][line[0][1]][line[0][0]];
+                if (first && line.every(([x, y, z]) => state.board[z][y][x] === first)) {
+                    return line;
+                }
+            }
+            return null;
+        }
+
+        function checkDraw() {
+            for (let z = 0; z < 4; z++) {
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        if (state.board[z][y][x] === null) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function endGame(winner, winLine = null) {
+            state.gameOver = true;
+            state.winner = winner;
+            
+            if (winner === 'draw') {
+                state.scores.draw++;
+                showModal('draw');
+            } else {
+                state.scores[winner]++;
+                showModal(winner);
+                if (winLine) {
+                    highlightWinLine(winLine);
+                }
+            }
+            
+            updateScores();
+        }
+
+        function highlightWinLine(line) {
+            const positions = line.map(([x, y, z]) => getWorldPosition(x, y, z));
+            
+            const points = positions.flatMap(p => [p.x, p.y, p.z]);
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+            
+            const material = new THREE.LineBasicMaterial({
+                color: COLORS.gold,
+                linewidth: 3
+            });
+            
+            const winLineMesh = new THREE.Line(geometry, material);
+            piecesGroup.add(winLineMesh);
+            
+            // Pulsing animation
+            function pulse() {
+                if (!state.gameOver) return;
+                
+                const time = performance.now() * 0.003;
+                const scale = 1 + Math.sin(time) * 0.1;
+                winLineMesh.material.opacity = 0.5 + Math.sin(time) * 0.3;
+                winLineMesh.scale.set(scale, scale, scale);
+                
+                requestAnimationFrame(pulse);
+            }
+            pulse();
+        }
+
+        function triggerAIMove() {
+            state.aiThinking = true;
+            document.getElementById('aiThinking').classList.add('visible');
+            
+            setTimeout(() => {
+                const move = getAIMove();
+                state.aiThinking = false;
+                document.getElementById('aiThinking').classList.remove('visible');
+                
+                if (move) {
+                    makeMove(move.x, move.y, move.z);
+                }
+            }, 500);
+        }
+
+        function getAIMove() {
+            const emptyCells = [];
+            for (let z = 0; z < 4; z++) {
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        if (state.board[z][y][x] === null) {
+                            emptyCells.push({ x, y, z });
+                        }
+                    }
+                }
+            }
+            
+            if (emptyCells.length === 0) return null;
+            
+            let depth, useAlphaBeta;
+            
+            switch (state.difficulty) {
+                case 'easy':
+                    return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                case 'medium':
+                    depth = 2;
+                    useAlphaBeta = false;
+                    break;
+                case 'hard':
+                    depth = 4;
+                    useAlphaBeta = true;
+                    break;
+            }
+            
+            let bestScore = -Infinity;
+            let bestMove = emptyCells[0];
+            
+            for (const cell of emptyCells) {
+                state.board[cell.z][cell.y][cell.x] = 'O';
+                
+                let score;
+                if (useAlphaBeta) {
+                    score = minimaxAlphaBeta(depth - 1, -Infinity, Infinity, false);
+                } else {
+                    score = minimax(depth - 1, false);
+                }
+                
+                state.board[cell.z][cell.y][cell.x] = null;
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = cell;
+                }
+            }
+            
+            return bestMove;
+        }
+
+        function minimax(depth, isMaximizing) {
+            const winner = checkWinState();
+            if (winner === 'O') return 100 + depth;
+            if (winner === 'X') return -100 - depth;
+            if (checkDrawState()) return 0;
+            if (depth === 0) return evaluateBoard();
+            
+            const emptyCells = getEmptyCells();
+            
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (const cell of emptyCells) {
+                    state.board[cell.z][cell.y][cell.x] = 'O';
+                    const score = minimax(depth - 1, false);
+                    state.board[cell.z][cell.y][cell.x] = null;
+                    bestScore = Math.max(score, bestScore);
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (const cell of emptyCells) {
+                    state.board[cell.z][cell.y][cell.x] = 'X';
+                    const score = minimax(depth - 1, true);
+                    state.board[cell.z][cell.y][cell.x] = null;
+                    bestScore = Math.min(score, bestScore);
+                }
+                return bestScore;
+            }
+        }
+
+        function minimaxAlphaBeta(depth, alpha, beta, isMaximizing) {
+            const winner = checkWinState();
+            if (winner === 'O') return 100 + depth;
+            if (winner === 'X') return -100 - depth;
+            if (checkDrawState()) return 0;
+            if (depth === 0) return evaluateBoard();
+            
+            const emptyCells = getEmptyCells();
+            
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (const cell of emptyCells) {
+                    state.board[cell.z][cell.y][cell.x] = 'O';
+                    const score = minimaxAlphaBeta(depth - 1, alpha, beta, false);
+                    state.board[cell.z][cell.y][cell.x] = null;
+                    bestScore = Math.max(score, bestScore);
+                    alpha = Math.max(alpha, score);
+                    if (beta <= alpha) break;
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (const cell of emptyCells) {
+                    state.board[cell.z][cell.y][cell.x] = 'X';
+                    const score = minimaxAlphaBeta(depth - 1, alpha, beta, true);
+                    state.board[cell.z][cell.y][cell.x] = null;
+                    bestScore = Math.min(score, bestScore);
+                    beta = Math.min(beta, score);
+                    if (beta <= alpha) break;
+                }
+                return bestScore;
+            }
+        }
+
+        function evaluateBoard() {
+            let score = 0;
+            
+            // Evaluate all lines
+            for (const line of WIN_LINES) {
+                const counts = { X: 0, O: 0, empty: 0 };
+                
+                for (const [x, y, z] of line) {
+                    const val = state.board[z][y][x];
+                    if (val) counts[val]++;
+                    else counts.empty++;
+                }
+                
+                // Score based on line state
+                if (counts.empty > 0) {
+                    // Prefer lines where AI has pieces
+                    score += counts.O * 10;
+                    // Slight penalty for lines where opponent has pieces
+                    score -= counts.X * 8;
+                    // Bonus for nearly complete lines
+                    if (counts.O === 3) score += 50;
+                    if (counts.X === 3) score -= 45;
+                }
+            }
+            
+            return score;
+        }
+
+        function getEmptyCells() {
+            const cells = [];
+            for (let z = 0; z < 4; z++) {
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        if (state.board[z][y][x] === null) {
+                            cells.push({ x, y, z });
+                        }
+                    }
+                }
+            }
+            return cells;
+        }
+
+        function checkWinState() {
+            for (const line of WIN_LINES) {
+                const first = state.board[line[0][2]][line[0][1]][line[0][0]];
+                if (first && line.every(([x, y, z]) => state.board[z][y][x] === first)) {
+                    return first;
+                }
+            }
+            return null;
+        }
+
+        function checkDrawState() {
+            return getEmptyCells().length === 0;
+        }
+
+        function resetGame() {
+            state.board = Array(4).fill(null).map(() => 
+                Array(4).fill(null).map(() => 
+                    Array(4).fill(null)
+                )
+            );
+            state.currentPlayer = 'X';
+            state.gameOver = false;
+            state.winner = null;
+            state.winningLine = null;
+            state.aiThinking = false;
+            
+            // Clear pieces
+            while (piecesGroup.children.length > 0) {
+                piecesGroup.remove(piecesGroup.children[0]);
+            }
+            
+            // Reset cell highlights
+            for (let z = 0; z < 4; z++) {
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        if (cellMeshes[z] && cellMeshes[z][y] && cellMeshes[z][y][x]) {
+                            cellMeshes[z][y][x].material.opacity = 0.1;
+                        }
+                    }
+                }
+            }
+            
+            updateTurnIndicator();
+            document.getElementById('modalOverlay').classList.remove('visible');
+        }
+
+        function updateTurnIndicator() {
+            const indicator = document.getElementById('turnIndicator');
+            indicator.textContent = state.vsAI 
+                ? (state.currentPlayer === 'X' ? "Your Turn" : "AI's Turn")
+                : `Player ${state.currentPlayer}'s Turn`;
+            indicator.className = `turn-indicator player-${state.currentPlayer.toLowerCase()}`;
+        }
+
+        function updateScores() {
+            document.getElementById('xScore').textContent = state.scores.X;
+            document.getElementById('oScore').textContent = state.scores.O;
+            document.getElementById('drawScore').textContent = state.scores.draw;
+        }
+
+        function showModal(winner) {
+            const overlay = document.getElementById('modalOverlay');
+            const title = document.getElementById('modalTitle');
+            const subtitle = document.getElementById('modalSubtitle');
+            
+            if (winner === 'draw') {
+                title.textContent = "It's a Draw!";
+                title.className = 'modal-title draw';
+                subtitle.textContent = 'The quantum realm remains balanced';
+            } else {
+                const playerName = state.vsAI 
+                    ? (winner === 'X' ? 'Victory!' : 'Defeated')
+                    : `Player ${winner} Wins!`;
+                title.textContent = playerName;
+                title.className = `modal-title winner-${winner.toLowerCase()}`;
+                subtitle.textContent = winner === 'X' 
+                    ? 'The X photon dominates!' 
+                    : 'The O photon prevails!';
+            }
+            
+            setTimeout(() => {
+                overlay.classList.add('visible');
+            }, 500);
+        }
+
+        function setupUI() {
+            document.getElementById('newGameBtn').addEventListener('click', resetGame);
+            document.getElementById('playAgainBtn').addEventListener('click', resetGame);
+            
+            document.getElementById('aiToggle').addEventListener('click', () => {
+                state.vsAI = !state.vsAI;
+                const btn = document.getElementById('aiToggle');
+                const selector = document.getElementById('difficultySelector');
+                
+                if (state.vsAI) {
+                    btn.textContent = 'vs Human';
+                    btn.classList.add('primary');
+                    selector.classList.add('visible');
+                } else {
+                    btn.textContent = 'vs AI';
+                    btn.classList.remove('primary');
+                    selector.classList.remove('visible');
+                }
+                
+                resetGame();
+            });
+            
+            document.querySelectorAll('.difficulty-btn, #difficultySelector .btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.difficulty-btn, #difficultySelector .btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    btn.classList.add('active');
+                    state.difficulty = btn.dataset.difficulty;
+                });
+            });
+            
+            document.querySelectorAll('.layer-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentLayer = parseInt(btn.dataset.layer);
+                    animateLayerChange();
+                });
+            });
+        }
+
+        function animateLayerChange() {
+            const spacing = 1.15;
+            
+            gridGroup.children.forEach((layer, index) => {
+                const targetZ = index * -spacing;
+                const currentZ = layer.position.z;
+                const targetOpacity = index <= currentLayer ? 1 : 0.2;
+                
+                layer.userData.targetZ = targetZ;
+                layer.userData.targetOpacity = targetOpacity;
+                layer.userData.animating = true;
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Animate layer positions
+            gridGroup.children.forEach(layer => {
+                if (layer.userData.animating) {
+                    const diff = layer.userData.targetZ - layer.position.z;
+                    if (Math.abs(diff) < 0.01) {
+                        layer.position.z = layer.userData.targetZ;
+                        layer.userData.animating = false;
+                    } else {
+                        layer.position.z += diff * 0.1;
+                    }
+                    
+                    layer.traverse(child => {
+                        if (child.material && child.material.opacity !== undefined) {
+                            const targetOp = layer.userData.targetOpacity;
+                            child.material.opacity = THREE.MathUtils.lerp(
+                                child.material.opacity,
+                                targetOp * 0.1,
+                                0.1
+                            );
+                        }
+                    });
+                }
+            });
+            
+            // Animate ambient particles
+            particlesGroup.children.forEach(particles => {
+                if (particles.userData.isAmbient) {
+                    particles.rotation.y += 0.0003;
+                }
+            });
+            
+            composer.render();
+        }
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
